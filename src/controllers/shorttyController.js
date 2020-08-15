@@ -11,7 +11,7 @@ async function createURL(req, res) {
     if(validURL.isUri(url)){
         try{
             const _url = await URLSchema.findOne({ url });//Veify if there is the same url in the database
-            const _slug = await URLSchema.findOne({ slug });//Veify if there is the same slug in the database
+            //const _slug = await URLSchema.findOne({ slug });//Veify if there is the same slug in the database
 
             if(_url){//If is one _url send it
                 res.send(_url);

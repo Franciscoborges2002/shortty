@@ -1,35 +1,63 @@
 const URLSchema = require('../models/URLshortty');
 const { nanoid } = require('nanoid');
+const validURL = require('valid-url');
 
 async function createURL(req, res) {
     const url = req.body.url;
-    const slug = req.body.slug;
+    const slug = nanoid(6);
+    const baseURL = 'http://localhost:5000'
 
-    if(slug == ''){//If the client doesn't enter one slug generate one with nanoid and query if he is not repeated
-        const newSlug = nanoid(6);
-        const occupied = true;
-        
-        if(await URLSchema.find({slug: newSlug}).some() ==true ){
-            occupied = true
+
+    if(validURL.isUri(url)){
+        try{
+            const _url = await URLSchema.findOne({ url });//Veify if there is the same url in the database
+            const _slug = await URLSchema.findOne({ slug });//Veify if there is the same slug in the database
+
+            if(_url){//If is one _url send it
+                res.send(_url);
+            }else{
+                let _url = baseURL + '/' + slug;
+
+                const shortty = new URLSchema({
+                    url: url,
+                    slug: slug,
+                    date: new Date()
+                });
+
+                shortty.save().then(()=>{
+                    console.log('URL received');
+                }).catch((err)=>{
+                    console.log('URL not received: ' + err)
+                    res.status(500).send({message: err});
+                });
+            
+                res.send(_url);
+            }
+        }catch(err){
+            console.log(err);
+            res.status(500).send('An error occured in the server')
         }
-    } else{//if the user has a slug make the verification
-        const shortty = new URLSchema({
-            url: url,
-            slug: slug
-        });
-
-        shortty.save().then(()=>{
-            console.log('URL received') 
-            res.status(200).send({message:'URL received'})
-        }).catch((err)=>{
-            console.log('URL not received')
-            res.status(500).send({message: err});
-        });
+    }else {//else this is not a URL, send error message
+        return res.status(400).send({message: 'This is not a URL'});
     }
 }
 
+//get the url from the db and redirect the client to the original url
 async function getURL(req, res) {
-    res.status(200).send({idURL:req.params.id});
+    //res.status(200).send({idURL:req.params.code});
+
+    try{
+        const slug = await URLSchema.findOne({ slug: req.params.code});
+
+        if(slug){
+            return res.redirect(slug.url);
+        }else {
+            return res.status(404).send({message: "There is no such shortty"});
+        }
+    } catch(err){
+        console.log('ERROR: '+ err);
+        return res.status(500).send({message: "One error hapenned with the server"});
+    }
 }
 
 module.exports = { createURL, getURL}
